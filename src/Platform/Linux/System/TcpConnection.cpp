@@ -12,6 +12,13 @@
 #include <System/ErrorMessage.h>
 #include <System/InterruptedException.h>
 #include <System/Ipv4Address.h>
+#if EAGAIN == EWOULDBLOCK
+#      define IS_EAGAIN_OR_EWOULDBLOCK(e) ((e) == EAGAIN)
+#else
+#      define IS_EAGAIN_OR_EWOULDBLOCK(e) \
+               ((e) == EAGAIN || (e) == EWOULDBLOCK)
+#endif
+
 
 namespace System {
 
@@ -68,7 +75,8 @@ size_t TcpConnection::read(uint8_t* data, size_t size) {
   std::string message;
   ssize_t transferred = ::recv(connection, (void *)data, size, 0);
   if (transferred == -1) {
-    if (errno != EAGAIN  && errno != EWOULDBLOCK) {
+    if (IS_EAGAIN_OR_EWOULDBLOCK(errno)) {
+//    if ((errno != EAGAIN)  && (errno != EWOULDBLOCK)) {
       message = "recv failed, " + lastErrorMessage();
     } else {
       epoll_event connectionEvent;
@@ -164,7 +172,8 @@ std::size_t TcpConnection::write(const uint8_t* data, size_t size) {
 
   ssize_t transferred = ::send(connection, (void *)data, size, MSG_NOSIGNAL);
   if (transferred == -1) {
-    if (errno != EAGAIN  && errno != EWOULDBLOCK) {
+//    if (errno != EAGAIN  && errno != EWOULDBLOCK) {
+    if (IS_EAGAIN_OR_EWOULDBLOCK(errno)) {
       message = "send failed, " + lastErrorMessage();
     } else {
       epoll_event connectionEvent;

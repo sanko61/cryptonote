@@ -13,6 +13,12 @@
 #include "Dispatcher.h"
 #include <System/ErrorMessage.h>
 #include <System/InterruptedException.h>
+#if EAGAIN == EWOULDBLOCK
+#      define IS_EAGAIN_OR_EWOULDBLOCK(e) ((e) == EAGAIN)
+#else
+#      define IS_EAGAIN_OR_EWOULDBLOCK(e) \
+               ((e) == EAGAIN || (e) == EWOULDBLOCK)
+#endif
 
 namespace System {
 
@@ -89,7 +95,8 @@ void Timer::sleep(std::chrono::nanoseconds duration) {
         if (!timerContext->interrupted) {
           uint64_t value = 0;
           if(::read(timer, &value, sizeof value) == -1 ){
-            if(errno == EAGAIN || errno == EWOULDBLOCK) {
+//            if(errno == EAGAIN || errno == EWOULDBLOCK) {
+          if (IS_EAGAIN_OR_EWOULDBLOCK(errno)) {
               timerContext->interrupted = true;
               dispatcher->pushContext(timerContext->context);
             } else {
